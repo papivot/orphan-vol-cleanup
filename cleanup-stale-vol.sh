@@ -47,7 +47,7 @@ then
 
 	for filename in *.json
 	do
-    #echo "Status: Now processing file ${filename}."
+    		#echo "Status: Now processing file ${filename}."
 		num_cluster_flavor=$(jq -r '.Metadata.ContainerClusterArray|length' "${filename}")
 
 		# We may need to filter the volume with only ONE GUEST_CLUSTER and ONE WORKLOAD. Only WORKLOAD implies a PV created on a Supervisor Cluster.
