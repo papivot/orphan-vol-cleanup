@@ -47,10 +47,10 @@ then
 
 	for filename in *.json
 	do
-    		#echo "Status: Now processing file ${filename}."
+		#echo "Status: Now processing file ${filename}."
 		num_cluster_flavor=$(jq -r '.Metadata.ContainerClusterArray|length' "${filename}")
 
-		# We may need to filter the volume with only ONE GUEST_CLUSTER and ONE WORKLOAD. Only WORKLOAD implies a PV created on a Supervisor Cluster.
+		# We may need to filter the volume with only one GUEST_CLUSTER and one WORKLOAD. Only WORKLOAD implies a PV created on a Supervisor Cluster.
 		# Need to check if the value can be more than 2 (probably for RWM??)
 		if [ "$num_cluster_flavor" -eq 2 ]
 		then
@@ -59,15 +59,22 @@ then
 			clusterid=$(jq -r '.Metadata.ContainerClusterArray[]| select(.ClusterFlavor == "GUEST_CLUSTER")|.ClusterId' "${filename}")
 
 			# Search for the above ClusterID in .Metadata.EntityMetadata[].ClusterID where .Metadata.EntityMetadata[].EntityType = PERSISTENT_VOLUME or .Metadata.EntityMetadata[].EntityType = PERSISTENT_VOLUME_CLAIM. If found, ignore. 
-			found=$(jq -r --arg cid "$clusterid" '.Metadata.EntityMetadata[]|select (.ClusterID == $cid and (.EntityType == "PERSISTENT_VOLUME" or .EntityType == "PERSISTENT_VOLUME_CLAIM"))' "${filename}")
-			if [ "$found" ]
+			cluster_found=$(jq -r --arg cid "$clusterid" '.Metadata.EntityMetadata[]|select (.ClusterID == $cid and (.EntityType == "PERSISTENT_VOLUME" or .EntityType == "PERSISTENT_VOLUME_CLAIM"))' "${filename}")
+			if [ "$cluster_found" ]
 			then
-				echo "Status: ${filename} does not have any orphan volumes."
+				echo "Status: ${filename} has no orphan volumes."
 				rm -f "${filename}"
 			else
 				echo "Status: ${filename} has an orphaned volume that needs to be cleaned."
 				pv_name=$(jq -r '.Name' "${filename}")
-				echo "kubectl delete pv ${pv_name}"
+				storagepolicyid=$(jq -r '.StoragePolicyId' "${filename}")
+				
+				# Before deleting, check if the .StoragePolicyId is in the list of StoragePolicyId of all the StorageClasses of the current Supervisor. 
+				spid_found=$(kubectl get storageclass -o json | jq -r --arg spid "$storagepolicyid" '.items[].parameters|select (.storagePolicyID == $spid)')
+				if [ "$spid_found" ]
+				then
+					echo "kubectl delete pv ${pv_name}"
+				fi
 			fi
 		fi
 	done
