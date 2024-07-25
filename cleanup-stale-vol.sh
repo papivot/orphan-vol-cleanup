@@ -93,10 +93,10 @@ then
 			else
 				echo "Status: ${filename} has an orphaned volume that may need to be removed."
 
-				pv_name=$(jq -r '.Name' "${filename}")
 				storagepolicyid=$(jq -r '.StoragePolicyId' "${filename}")
-				namespace=$(jq -r '.Metadata.EntityMetadata[]|select (.EntityType == "PERSISTENT_VOLUME_CLAIM")|.EntityName' "${filename}")
+				pv_name=$(jq -r '.Name' "${filename}")
 				pvc_name=$(jq -r '.Metadata.EntityMetadata[]|select (.EntityType == "PERSISTENT_VOLUME_CLAIM")|.Namespace' "${filename}")
+				namespace=$(jq -r '.Metadata.EntityMetadata[]|select (.EntityType == "PERSISTENT_VOLUME_CLAIM")|.EntityName' "${filename}")
 
 				# Before deleting, check if the .StoragePolicyId is in the list of StoragePolicyId of all the StorageClasses of the current Supervisor.
 				spid_found=$(kubectl get storageclass -o json | jq -r --arg spid "$storagepolicyid" '.items[].parameters|select (.storagePolicyID == $spid)')
